@@ -16,7 +16,7 @@ if ($_SERVER['HTTP_HOST'] == "localhost" or $_SERVER['HTTP_HOST'] == "192.168.29
 	DEFINE('DB_USER', 'root');
 	DEFINE('DB_PASSWORD', '');
 	DEFINE('DB_HOST', 'localhost'); //host name depends on server
-	DEFINE('DB_NAME', 'db_lableiz');
+	DEFINE('DB_NAME', 'db_database');
 } else {
 	//local live 
 
@@ -25,6 +25,8 @@ if ($_SERVER['HTTP_HOST'] == "localhost" or $_SERVER['HTTP_HOST'] == "192.168.29
 	DEFINE('DB_HOST', 'localhost'); //host name depends on server
 	DEFINE('DB_NAME', 'db_database');
 }
+
+//DEFINE('APP_GCM_KEY', 'value');
 
 
 $mysqli = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
