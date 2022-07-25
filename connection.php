@@ -20,13 +20,11 @@ if ($_SERVER['HTTP_HOST'] == "localhost" or $_SERVER['HTTP_HOST'] == "192.168.29
 } else {
 	//local live 
 
-	DEFINE('DB_USER', 'delifood_dblabeliz');
-	DEFINE('DB_PASSWORD', 'csvsV2%xKDvY');
+	DEFINE('DB_USER', 'db_user');
+	DEFINE('DB_PASSWORD', 'db_password');
 	DEFINE('DB_HOST', 'localhost'); //host name depends on server
-	DEFINE('DB_NAME', 'delifood_dblabeliz');
+	DEFINE('DB_NAME', 'db_database');
 }
-
-//DEFINE('APP_GCM_KEY', 'AAAAi3Wpuwc:APA91bFEd0OGdT9EAUt70bkhEFV_CLjNvxZbAPTyVgsWKKuectjEOgKWLBDNEAN1xvgTUjCTj59PWdJLGmQKuVupeKTnG7XshRZcKohb7zj3acW3T7Ll2zlAGeNK2fQ6BakbUHpajIVI');
 
 
 $mysqli = mysqli_connect(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
