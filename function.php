@@ -1,76 +1,135 @@
 <?php //error_reporting(0);
 
 
-
-# Insert Data 
 function Insert($table, $data)
 {
-
     global $mysqli;
-    //print_r($data);
 
     $fields = array_keys($data);
     $values = array_map(array($mysqli, 'real_escape_string'), array_values($data));
 
-    //echo "INSERT INTO $table(".implode(",",$fields).") VALUES ('".implode("','", $values )."');";
-    //exit;  
-    mysqli_query($mysqli, "INSERT INTO $table(" . implode(",", $fields) . ") VALUES ('" . implode("','", $values) . "');") or die(mysqli_error($mysqli));
+    $placeholders = array_fill(0, count($fields), '?');
+    $query = "INSERT INTO $table(" . implode(",", $fields) . ") VALUES (" . implode(",", $placeholders) . ")";
+
+    $stmt = mysqli_prepare($mysqli, $query);
+
+    if ($stmt) {
+        // Bind parameters
+        $types = str_repeat('s', count($values)); // Assuming all values are strings, adjust accordingly
+        mysqli_stmt_bind_param($stmt, $types, ...$values);
+
+        // Execute statement
+        mysqli_stmt_execute($stmt);
+
+        // Check for errors
+        if (mysqli_stmt_error($stmt)) {
+            die(mysqli_stmt_error($stmt));
+        }
+
+        // Close statement
+        mysqli_stmt_close($stmt);
+    } else {
+        die(mysqli_error($mysqli));
+    }
 }
 
-// Update Data, Where clause is left optional
+
 function Update($table_name, $form_data, $where_clause = '')
 {
     global $mysqli;
-    // check for optional where clause
+
+    // Check for optional where clause
     $whereSQL = '';
     if (!empty($where_clause)) {
-        // check to see if the 'where' keyword exists
+        // Check to see if the 'where' keyword exists
         if (substr(strtoupper(trim($where_clause)), 0, 5) != 'WHERE') {
-            // not found, add key word
+            // Not found, add keyword
             $whereSQL = " WHERE " . $where_clause;
         } else {
             $whereSQL = " " . trim($where_clause);
         }
     }
-    // start the actual SQL statement
+
+    // Start the actual SQL statement
     $sql = "UPDATE " . $table_name . " SET ";
 
-    // loop and build the column /
+    // Loop and build the column / value pairs
     $sets = array();
+    $values = array();
     foreach ($form_data as $column => $value) {
-        $sets[] = "`" . $column . "` = '" . $value . "'";
+        $sets[] = "`" . $column . "` = ?";
+        $values[] = $value;
     }
     $sql .= implode(', ', $sets);
 
-    // append the where statement
+    // Append the WHERE statement
     $sql .= $whereSQL;
 
-    // run and return the query result
-    return mysqli_query($mysqli, $sql);
+    // Prepare and bind parameters
+    $stmt = mysqli_prepare($mysqli, $sql);
+    if ($stmt) {
+        $types = str_repeat('s', count($values)); // Assuming all values are strings, adjust accordingly
+        mysqli_stmt_bind_param($stmt, $types, ...$values);
+
+        // Execute statement
+        mysqli_stmt_execute($stmt);
+
+        // Check for errors
+        if (mysqli_stmt_error($stmt)) {
+            die(mysqli_stmt_error($stmt));
+        }
+
+        // Close statement
+        mysqli_stmt_close($stmt);
+
+        return true;
+    } else {
+        die(mysqli_error($mysqli));
+    }
 }
 
 
-//Delete Data, the where clause is left optional incase the user wants to delete every row!
+
+
 function Delete($table_name, $where_clause = '')
 {
     global $mysqli;
-    // check for optional where clause
+
+    // Check for optional where clause
     $whereSQL = '';
     if (!empty($where_clause)) {
-        // check to see if the 'where' keyword exists
+        // Check to see if the 'where' keyword exists
         if (substr(strtoupper(trim($where_clause)), 0, 5) != 'WHERE') {
-            // not found, add keyword
+            // Not found, add keyword
             $whereSQL = " WHERE " . $where_clause;
         } else {
             $whereSQL = " " . trim($where_clause);
         }
     }
-    // build the query
+
+    // Build the query
     $sql = "DELETE FROM " . $table_name . $whereSQL;
 
-    // run and return the query result resource
-    return mysqli_query($mysqli, $sql);
+    // Prepare and execute statement
+    $stmt = mysqli_prepare($mysqli, $sql);
+    if ($stmt) {
+        // Execute statement
+        mysqli_stmt_execute($stmt);
+
+        // Check for errors
+        if (mysqli_stmt_error($stmt)) {
+            die(mysqli_stmt_error($stmt));
+        }
+
+        // Close statement
+        mysqli_stmt_close($stmt);
+
+        return true;
+    } else {
+        die(mysqli_error($mysqli));
+    }
 }
+
 
 // clean input
 function cleanInput($input)
@@ -167,41 +226,48 @@ function getBaseUrl($array = false)
 }
 
 //GCM function
-function Send_GCM_msg($registration_id, $datatitle, $datamsgs)
-{
-    $datatitle = $datatitle;
-    $datamsgs = $datamsgs;
-
-    $registatoin_ids = array($registration_id);
-    $fcmMsg = array(
-        'title' => $datatitle,
-        'body' => $datamsgs,
-        'sound' => "default",
-        'color' => "#203E78"
-    );
-    $fcmFields = array(
-        'to' => implode($registatoin_ids),
-        'priority' => 'high',
-        'notification' => $fcmMsg
-    );
+function Send_GCM_msg($token, $title, $message, $firebaseKey = '', $channel_id = '') {    
+    if (empty($firebaseKey)) {
+        throw new Exception('Please provide your Firebase Cloud Messaging server key.');
+    }
+    $iconColor = "#ff0000";
+    $sound = "default";
+    if($channel_id=="noti1"){
+        $sound = "od21317216281";
+    } else if ($channel_id=="noti2"){
+        $sound = "od21317216282";
+    } 
+    // Prepare notification data
+    $data = array(
+        'to' => $token,
+        'notification' => array(
+            'title' => $title,
+            'body' => $message,
+            'sound' => $sound,            
+            'color' => $iconColor, // Optional sound notification
+        ),
+        'data' => array(
+            'channel_id' => $channel_id,
+        ),
+    );    
+    $payload = json_encode($data);    
     $headers = array(
-        'Authorization: key=' . APP_GCM_KEY . '',
-        'Content-Type: application/json'
+        'Authorization: key=' . $firebaseKey,
+        'Content-Type: application/json',
     );
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, 'https://fcm.googleapis.com/fcm/send');
+    // Send POST request to FCM server
+    $ch = curl_init('https://fcm.googleapis.com/fcm/send');
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fcmFields));
-    $result = curl_exec($ch);
-
-    if ($result === FALSE) {
-        die('Curl failed: ' . curl_error($ch));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);    
+    $response = curl_exec($ch);
+    if (curl_errno($ch)) {
+        throw new Exception('Error sending notification: ' . curl_error($ch));
     }
     curl_close($ch);
-    // echo $result;
+    // Return response for debugging or logging
+    return $response;
 }
 
 
@@ -436,3 +502,71 @@ function dateDiffInDays($date1, $date2)
     // 24 * 60 * 60 = 86400 seconds
     return abs(round($diff / 86400));
 }
+
+function orderStatusName($status)
+{
+    $statusname = "";
+    if ($status == 0) {
+        $statusname = "Pending";
+    } elseif ($status == 1) {
+        $statusname = "New Order";
+    } elseif ($status == 2) {
+        $statusname = "Assigned";
+    } elseif ($status == 3) {
+        $statusname = "Ready To Pickup";
+    } elseif ($status == 4) {
+        $statusname = "On The Way";
+    } elseif ($status == 5) {
+        $statusname = "Delivered";
+    } elseif ($status == 6) {
+        $statusname = "Cancelled";
+    }
+    return $statusname;
+}
+
+function getLastBalance($userType, $userId) {
+    global $mysqli;
+    $query = "SELECT balance FROM tbl_wallet_system WHERE user_type = '$userType' AND user_id = '$userId' ORDER BY id DESC LIMIT 1";
+    $result = mysqli_query($mysqli, $query);
+    $qcount = mysqli_num_rows($result);
+    if ($qcount > 0) {
+    
+        $row = mysqli_fetch_assoc($result);
+        return $row['balance'];
+    }
+
+    // If there's no record, return 0 or any default value
+    return 0;
+}
+
+function getInHandBalance($userType, $userId) {
+    global $mysqli;
+    $query = "SELECT inhand_balance FROM tbl_wallet_system WHERE user_type = '$userType' AND user_id = '$userId' ORDER BY id DESC LIMIT 1";
+    $result = mysqli_query($mysqli, $query);
+    $qcount = mysqli_num_rows($result);
+    if ($qcount > 0) {
+    
+        $row = mysqli_fetch_assoc($result);
+        return $row['inhand_balance'];
+    }
+
+    // If there's no record, return 0 or any default value
+    return 0;
+}
+
+function getUserToken($uid, $utable)
+{
+
+    global $mysqli;
+    // Prepare SQL statement to fetch token based on uid
+    $sql = "SELECT token FROM $utable WHERE uid = ?";
+    $stmt = $mysqli->prepare($sql);
+    $stmt->bind_param("i", $uid);
+    $stmt->execute();
+    $stmt->bind_result($token);
+    $stmt->fetch();
+    $stmt->close();
+    return $token;
+}
+
+
